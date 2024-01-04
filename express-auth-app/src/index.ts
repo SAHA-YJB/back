@@ -1,7 +1,7 @@
-import express, { Response, Request, NextFunction } from 'express';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import jwt, { VerifyOptions } from 'jsonwebtoken';
-
+import express, { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 declare global {
   namespace Express {
     interface Request {
@@ -27,6 +27,7 @@ const posts = [
 ];
 let refreshTokens: string[] = [];
 app.use(express.json());
+app.use(cookieParser());
 
 app.post('/login', (req, res) => {
   const userName = req.body.userName;
@@ -57,6 +58,31 @@ app.post('/login', (req, res) => {
 
 app.get('/posts', authMiddleware, (req: Request, res: Response) => {
   res.json(posts);
+});
+// 리프레시 토큰으로 새로운 액세스 토큰 발급
+app.get('/refresh', (req: Request, res: Response) => {
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(403);
+
+  const refreshToken = cookies.jwt;
+  // 리프레시 토큰이 데이터베이스에 있는 토큰인지 확인
+  if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403);
+
+  jwt.verify(
+    refreshToken,
+    process.env.REFRESH_SECRET_KEY!,
+    (err: any, user: any) => {
+      if (err) return res.sendStatus(403);
+      const accessToken = jwt.sign(
+        { name: user.name },
+        process.env.SECRET_KEY!,
+        {
+          expiresIn: '30s',
+        }
+      );
+      res.json({ accessToken });
+    }
+  );
 });
 
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
