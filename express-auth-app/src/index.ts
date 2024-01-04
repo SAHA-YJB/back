@@ -25,7 +25,7 @@ const posts = [
     title: 'post 2',
   },
 ];
-
+let refreshTokens: string[] = [];
 app.use(express.json());
 
 app.post('/login', (req, res) => {
@@ -33,7 +33,25 @@ app.post('/login', (req, res) => {
   const user = { name: userName };
 
   // jwt를 이용 토큰생성 페이로드 + 시크릿키
-  const accessToken = jwt.sign(user, process.env.SECRET_KEY!);
+  // 유효기간 추가
+  const accessToken = jwt.sign(user, process.env.SECRET_KEY!, {
+    expiresIn: '30s',
+  });
+
+  // 리프레시 토큰 생성
+  const refreshToken = jwt.sign(user, process.env.REFRESH_SECRET_KEY!, {
+    expiresIn: '1d',
+  });
+  // 원래는 디비에 저장
+  refreshTokens.push(refreshToken);
+
+  // 리프레시 토큰을 쿠키에 저장
+  res.cookie('jwt', refreshToken, {
+    // js로 쿠키에 접근하지 못하게 httpOnly사용
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+
   res.json({ accessToken });
 });
 
