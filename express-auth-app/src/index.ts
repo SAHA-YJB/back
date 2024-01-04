@@ -1,6 +1,14 @@
-import express, { Response, Request } from 'express';
+import express, { Response, Request, NextFunction } from 'express';
 import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
+import jwt, { VerifyOptions } from 'jsonwebtoken';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: jwt.JwtPayload;
+    }
+  }
+}
 
 dotenv.config();
 
@@ -29,9 +37,23 @@ app.post('/login', (req, res) => {
   res.json({ accessToken });
 });
 
-app.get('/posts', (req: Request, res: Response) => {
+app.get('/posts', authMiddleware, (req: Request, res: Response) => {
   res.json(posts);
 });
+
+function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.SECRET_KEY!, (err, user) => {
+    if (err) return res.sendStatus(403);
+    if (typeof user !== 'string') {
+      req.user = user;
+    }
+    next();
+  });
+}
 
 app.listen(port, () => {
   console.log(`server start ${port}`);
