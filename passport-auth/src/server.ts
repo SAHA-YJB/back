@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import path from 'path';
 
+dotenv.config();
 const app = express();
 const port = 4000;
-dotenv.config();
 
 mongoose
   .connect(process.env.MONGO_URI!)
@@ -16,7 +16,9 @@ mongoose
     console.log('db connect error', err);
   });
 
+// ejs 설정
 app.set('views', path.join(__dirname, 'views'));
+// ejs를 사용하기 위한 설정
 app.set('view engine', 'ejs');
 
 app.use(express.json());
